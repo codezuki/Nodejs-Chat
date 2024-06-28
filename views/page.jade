@@ -1,0 +1,173 @@
+doctype html
+html
+  head
+    title Chat Room
+    script(src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js')
+    style.
+      html, body {
+        height: 100%;
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+      .chat-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+      }
+      .chat-box {
+        width: 60%;
+        height: 80%;
+        border: 1px solid #ccc;
+        display: flex;
+        flex-direction: column;
+        background-color: #fff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .chat-header {
+        background-color: #4CAF50;
+        color: #fff;
+        padding: 10px;
+        text-align: center;
+        font-size: 1.5em;
+        border-bottom: 1px solid #ccc;
+      }
+      .chat-messages {
+        flex: 1;
+        padding: 10px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column-reverse; /* Reverse to display latest message at the bottom */
+      }
+      .message {
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      .message.you {
+        align-self: flex-end;
+        text-align: right;
+        background-color: #dcf8c6;
+        border-radius: 5px;
+        padding: 5px 10px;
+        margin-left: 20%; /* Push message to the right side */
+      }
+      .message.other {
+        align-self: flex-start;
+        text-align: left;
+        background-color: #f1f0f0;
+        border-radius: 5px;
+        padding: 5px 10px;
+        margin-right: 20%; /* Push message to the left side */
+      }
+      .message .sender {
+        font-weight: bold;
+        margin-right: 10px;
+      }
+      .message .text {
+        margin-left: 10px;
+      }
+      .chat-input {
+        display: flex;
+        padding: 10px;
+        border-top: 1px solid #ccc;
+        background-color: #f9f9f9;
+      }
+      .chat-input input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      .chat-input button {
+        padding: 10px 20px;
+        margin-left: 10px;
+        background-color: #4CAF50;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .chat-input button:hover {
+        background-color: #45a049;
+      }
+  body
+    div(class='chat-container')
+      div(class='chat-box')
+        div(class='chat-header') Chat Room
+        div(class='chat-messages', id='messages')
+        div(class='chat-input')
+          input(type='text', id='name', placeholder='Enter your name...')
+          input(type='text', id='field', placeholder='Type your message...')
+          button(id='send', class='btn btn-primary')
+            i(class='fas fa-arrow-right')
+  script.
+    const socket = io(); // Connect to WebSocket server
+
+    const nameField = document.getElementById('name');
+    const messageField = document.getElementById('field');
+    const sendButton = document.getElementById('send');
+    const messagesContainer = document.getElementById('messages');
+
+    let userName = '';
+
+    // Function to send message
+    function sendMessage() {
+      const message = messageField.value.trim();
+      userName = nameField.value.trim() || 'Anonymous';
+
+      if (message !== '') {
+        const newMessage = document.createElement('div');
+        newMessage.classList.add('message');
+
+        if (userName === socket.username) {
+          newMessage.classList.add('you');
+          newMessage.innerHTML = `<span class="text">${message}</span>`;
+        } else {
+          newMessage.classList.add('other');
+          newMessage.innerHTML = `<span class="sender">${userName}:</span><span class="text">${message}</span>`;
+        }
+
+        messagesContainer.appendChild(newMessage);
+        messageField.value = '';
+
+        // Scroll to bottom
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Emit message to server
+        socket.emit('send', { message: message });
+      }
+    }
+
+    // Event listener for sending messages
+    sendButton.addEventListener('click', sendMessage);
+
+    // Handle Enter key press
+    messageField.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    // Handle incoming messages from server
+    socket.on('message', (data) => {
+      const { sender, message } = data;
+      const newMessage = document.createElement('div');
+      newMessage.classList.add('message');
+
+      if (sender === socket.username) {
+        newMessage.classList.add('you');
+        newMessage.innerHTML = `<span class="text">${message}</span>`;
+      } else {
+        newMessage.classList.add('other');
+        newMessage.innerHTML = `<span class="sender">${sender}:</span><span class="text">${message}</span>`;
+      }
+
+      messagesContainer.appendChild(newMessage);
+
+      // Scroll to bottom
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
